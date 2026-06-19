@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Goldwind · Wind Farm Coordinate Verification</title>
+<style>
+:root{--bg:#0d1117;--bg2:#11161d;--bg3:#161b22;--bg4:#1c2129;--bdr:#262c36;--tx:#e6edf3;--tx2:#c9d1d9;--tx3:#8b949e;--grn:#2ea043;--ylw:#d29922;--red:#f85149;--gw:#1a7f37;--gw-dk:#0d5a22}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+.wrap{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:44px;background:linear-gradient(90deg,var(--gw),var(--gw-dk));display:flex;align-items:center;padding:0 12px;gap:10px}
+.topbar b{color:#fff;font-size:14px;letter-spacing:.2px}
+.topbar .sub{color:#e6f5ec;font-size:11px;opacity:.9}
+.topbar .basetext{margin-left:auto;color:#e6f5ec;font-size:11px;background:rgba(0,0,0,.18);padding:4px 8px;border-radius:6px;cursor:pointer}
+main{flex:1;display:flex;flex-direction:column;min-height:0}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px 10px;background:var(--bg2);border-bottom:1px solid var(--bdr)}
+.kpi .k{background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:8px 10px;text-align:center}
+.kpi .kv{font-size:20px;font-weight:800;color:#fff}
+.kpi .kl{font-size:11px;color:var(--tx3)}
+.acts{display:flex;gap:6px;padding:6px 10px;background:var(--bg2);border-bottom:1px solid var(--bdr);align-items:center;flex-wrap:wrap}
+.tbtn{background:var(--bg4);color:var(--tx);border:1px solid var(--bdr);padding:7px 10px;border-radius:8px;font-size:12px;cursor:pointer;user-select:none}
+.tbtn:hover{border-color:#3f4750}
+.tbtn.p{background:var(--gw);border-color:var(--gw);color:#fff}
+.mapstatus{margin-left:auto;font-size:11px;color:var(--tx3)}
+.maparea{flex:1;display:flex;flex-direction:column;position:relative;background:#1a1a1a}
+#map{flex:1;width:100%;min-height:300px;background:#222}
+.mapctrl{position:absolute;top:54px;right:8px;z-index:999;display:flex;flex-direction:column;gap:4px}
+.ob{width:34px;height:34px;background:var(--bg4);border:1px solid var(--bdr);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px}
+.um{position:absolute;top:8px;left:8px;z-index:999;background:rgba(13,17,23,.75);border:1px solid var(--bdr);color:var(--tx);padding:4px 8px;border-radius:6px;font-size:11px}
+.bot{height:140px;background:var(--bg2);border-top:1px solid var(--bdr);display:flex;flex-direction:column}
+.botbar{height:30px;background:var(--bg3);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 10px;justify-content:space-between}
+.botbar .t{font-size:11px;font-weight:700;color:var(--tx2)}
+.al{flex:1;overflow-y:auto;padding:6px 10px;font-family:"SF Mono",Monaco,monospace;font-size:11px;line-height:1.55;color:var(--tx2)}
+.tblwrap{flex:0 0 220px;overflow:auto;background:var(--bg)}
+.tblwrap table{width:100%;border-collapse:collapse;font-size:12px}
+.tblwrap th{position:sticky;top:0;background:var(--bg2);color:var(--tx3);font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid var(--bdr);z-index:1}
+.tblwrap td{padding:7px 10px;border-bottom:1px solid var(--bdr);color:var(--tx2);vertical-align:middle;white-space:nowrap}
+.tblwrap tr:hover td{background:rgba(255,255,255,.02)}
+.dt{font-family:"SF Mono",Monaco,monospace;font-size:10px;font-weight:700}.dt.g{color:var(--grn)}.dt.y{color:var(--ylw)}.dt.r{color:var(--red)}
+.acts{display:flex;gap:3px}
+.ib{width:26px;height:26px;background:var(--bg4);border:1px solid var(--bdr);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px}
+.bdg{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.bdg.ok{background:rgba(46,160,67,.15);color:#3fb950;border:1px solid rgba(46,160,67,.35)}
+.bdg.wn{background:rgba(210,153,34,.12);color:#e3b341;border:1px solid rgba(210,153,34,.35)}
+.bdg.er{background:rgba(248,81,73,.12);color:#ff6b63;border:1px solid rgba(248,81,73,.35)}
+.bdg.pd{background:rgba(139,148,158,.12);color:#8b949e;border:1px solid rgba(139,148,158,.25)}
+</style>
+<link rel="stylesheet" href="lib/leaflet.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <b>🌬 Goldwind</b>
+    <span class="sub">Wind Farm Coordinate Verification</span>
+    <span class="basetext" id="baseToggle">Basemap: Satellite</span>
+  </div>
+  <main>
+    <div class="kpi">
+      <div class="k"><div class="kv" id="kTotal">0</div><div class="kl">Turbines</div></div>
+      <div class="k"><div class="kv" id="kChk">0</div><div class="kl">Checked</div></div>
+      <div class="k"><div class="kv" id="kPend">0</div><div class="kl">Pending</div></div>
+      <div class="k"><div class="kv" id="kErr">0</div><div class="kl">Anomaly</div></div>
+    </div>
+    <div class="acts">
+      <button class="tbtn s" onclick="document.getElementById('csvUpload').click()">📥 Import CSV</button>
+      <input type="file" id="csvUpload" accept=".csv" onchange="importCSV(event)">
+      <button class="tbtn p" onclick="autoStart()">🔍 Auto-Check All</button>
+      <button class="tbtn p" onclick="exportCSV()">📤 Export</button>
+      <button class="tbtn" onclick="resetAll()">🔄 Reset</button>
+      <span class="mapstatus" id="progressTxt">0 / 0</span>
+    </div>
+    <div class="maparea">
+      <div class="um" id="statusText">Idle</div>
+      <div id="map"></div>
+      <div class="mapctrl">
+        <button class="ob" onclick="fitAll()" title="Fit all">⊡</button>
+        <button class="ob" onclick="map && map.zoomIn()" title="Zoom in">+</button>
+        <button class="ob" onclick="map && map.zoomOut()" title="Zoom out">−</button>
+      </div>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>ORIGINAL</th><th>CORRECTED</th><th>DEVIATION</th><th>STATUS</th><th>ACTIONS</th></tr>
+        </thead>
+        <tbody id="tbl"></tbody>
+      </table>
+    </div>
+    <div class="bot">
+      <div class="botbar">
+        <span class="t">Activity Log</span>
+        <span class="t" id="logCount">0</span>
+      </div>
+      <div class="al" id="bcontent"></div>
+    </div>
+  </main>
+</div>
+<script src="lib/leaflet.js"></script>
+<script>
+const FARM_ID='640358';
+const TURBINES=[
+  {id:'6403580001',lat:37.3733,lon:106.4133,label:'#1'},
+  {id:'6403580002',lat:37.3700,lon:106.4058,label:'#2'},
+  {id:'6403580003',lat:37.3700,lon:106.3811,label:'#3'},
+  {id:'6403580004',lat:37.3789,lon:106.3736,label:'#4'},
+  {id:'6403580005',lat:37.3886,lon:106.3653,label:'#5'},
+  {id:'6403580006',lat:37.3972,lon:106.3594,label:'#6'},
+  {id:'6403580007',lat:37.4061,lon:106.3544,label:'#7'},
+  {id:'6403580008',lat:37.4150,lon:106.3508,label:'#8'},
+  {id:'6403580009',lat:37.4236,lon:106.3486,label:'#9'},
+  {id:'6403580010',lat:37.4322,lon:106.3478,label:'#10'},
+  {id:'6403580011',lat:37.3786,lon:106.4281,label:'#11'},
+  {id:'6403580012',lat:37.3769,lon:106.4197,label:'#12'},
+  {id:'6403580013',lat:37.3753,lon:106.4047,label:'#13'},
+  {id:'6403580014',lat:37.3736,lon:106.3892,label:'#14'},
+  {id:'6403580015',lat:37.3731,lon:106.3750,label:'#15'},
+  {id:'6403580016',lat:37.3750,lon:106.3603,label:'#16'},
+  {id:'6403580017',lat:37.3806,lon:106.3467,label:'#17'},
+  {id:'6403580018',lat:37.3886,lon:106.3347,label:'#18'},
+  {id:'6403580019',lat:37.4181,lon:106.4317,label:'#19'},
+  {id:'6403580020',lat:37.4233,lon:106.4261,label:'#20'},
+  {id:'6403580021',lat:37.3811,lon:106.4406,label:'#21'},
+  {id:'6403580022',lat:37.3844,lon:106.4378,label:'#22'},
+  {id:'6403580023',lat:37.3900,lon:106.4350,label:'#23'},
+  {id:'6403580024',lat:37.3961,lon:106.4322,label:'#24'},
+  {id:'6403580025',lat:37.4025,lon:106.4292,label:'#25'},
+  {id:'6403580026',lat:37.4092,lon:106.4239,label:'#26'},
+  {id:'6403580027',lat:37.4089,lon:106.4125,label:'#27'},
+  {id:'6403580028',lat:37.4075,lon:106.4011,label:'#28'},
+  {id:'6403580029',lat:37.4056,lon:106.3897,label:'#29'},
+  {id:'6403580030',lat:37.4044,lon:106.3781,label:'#30'},
+  {id:'6403580031',lat:37.4036,lon:106.3667,label:'#31'},
+  {id:'6403580032',lat:37.4069,lon:106.3558,label:'#32'},
+  {id:'6403580033',lat:37.4136,lon:106.3461,label:'#33'},
+  {id:'6403580034',lat:37.4472,lon:106.4078,label:'#34'},
+  {id:'6403580035',lat:37.4492,lon:106.3953,label:'#35'},
+  {id:'6403580036',lat:37.4492,lon:106.3828,label:'#36'},
+  {id:'6403580037',lat:37.4478,lon:106.3703,label:'#37'},
+  {id:'6403580038',lat:37.4456,lon:106.3578,label:'#38'},
+  {id:'6403580039',lat:37.4428,lon:106.3450,label:'#39'},
+  {id:'6403580040',lat:37.4389,lon:106.3331,label:'#40'},
+  {id:'6403580041',lat:37.4344,lon:106.3214,label:'#41'},
+  {id:'6403580042',lat:37.3894,lon:106.4150,label:'#42'},
+  {id:'6403580043',lat:37.3864,lon:106.4125,label:'#43'},
+  {id:'6403580044',lat:37.3847,lon:106.4058,label:'#44'},
+  {id:'6403580045',lat:37.3744,lon:106.3983,label:'#45'},
+  {id:'6403580046',lat:37.3697,lon:106.3892,label:'#46'},
+  {id:'6403580047',lat:37.4000,lon:106.4239,label:'#47'},
+  {id:'6403580048',lat:37.3908,lon:106.4353,label:'#48'},
+  {id:'6403580049',lat:37.4081,lon:106.4394,label:'#49'},
+  {id:'6403580050',lat:37.4253,lon:106.3342,label:'#50'},
+  {id:'6403580051',lat:37.4267,lon:106.3236,label:'#51'},
+  {id:'6403580052',lat:37.4050,lon:106.4483,label:'#52'},
+  {id:'6403580053',lat:37.3972,lon:106.4497,label:'#53'},
+  {id:'6403580054',lat:37.3875,lon:106.4472,label:'#54'},
+  {id:'6403580055',lat:37.4389,lon:106.3928,label:'#55'}
+];
+let map=null,markLayer=null,clickLayer=null,markers={};
+let turbines=JSON.parse(JSON.stringify(TURBINES));
+let autoRunning=false,autoIndex=0;
+let editingId=null,selId=null;
+const KEY='gw640358_state';
+function status(dist){if(dist===undefined||dist===null)return'pending';if(dist<20)return'ok';if(dist<100)return'wn';return'er'}
+function statusLabel(s){if(s==='ok')return'OK';if(s==='wn')return'Review';if(s==='er')return'Offset';return'Pending'}
+function colorForStatus(s){if(s==='ok')return'g';if(s==='wn')return'y';if(s==='er')return'r';return''}
+function fmtDist(d){if(d===undefined||d===null)return'—';return d.toFixed(1)+' m'}
+function addLog(tag,msg){const el=document.getElementById('bcontent');if(!el)return;const d=new Date();const row=document.createElement('div');row.className='li';row.innerHTML='<span style="color:var(--tx3)">'+d.toLocaleTimeString()+'</span> <b>['+tag+']</b> '+msg;el.insertBefore(row,el.firstChild);const cnt=document.getElementById('logCount');if(cnt)cnt.textContent=el.children.length}
+function updateKPI(){let checked=0,err=0,pend=0;turbines.forEach(t=>{const s=status(t.dist);if(s==='ok')checked++;else if(s==='er')err++;else pend++});document.getElementById('kTotal').textContent=turbines.length;document.getElementById('kChk').textContent=checked;document.getElementById('kPend').textContent=pend;document.getElementById('kErr').textContent=err}
+function updateRowStatus(id,dist){const row=document.getElementById('r_'+id);if(!row)return;const s=status(dist);const dt=row.querySelector('.dt');const badge=row.querySelector('.bdg');if(dt){dt.className='dt '+colorForStatus(s);dt.textContent=fmtDist(dist)}if(badge){badge.className='bdg '+s;badge.textContent=statusLabel(s)}updateKPI()}
+function clearClickLayer(){if(clickLayer)clickLayer.clearLayers()}
+function locateTurbine(id){const t=turbines.find(x=>x.id===id);if(!t)return;clearClickLayer();selId=id;map.flyTo([t.lat,t.lon],18,{duration:.6});const st=document.getElementById('statusText');if(st)st.textContent='Viewing original position '+id}
+function startEdit(id){if(autoRunning)autoRunning=false;editingId=id;clearClickLayer();const t=turbines.find(x=>x.id===id);if(!t)return;map.flyTo([t.lat,t.lon],18,{duration:.5});document.getElementById('map').style.cursor='crosshair';const st=document.getElementById('statusText');if(st){st.textContent='✏️ EDIT MODE ACTIVE — Click the map at the actual turbine position NOW';st.style.background='rgba(46,160,67,.3)';setTimeout(()=>{if(st)st.style.background='rgba(13,17,23,.75)'},4000)}addLog('Edit','Editing '+id+' — waiting for map click')}
+function applyCorrection(lat,lon){if(!editingId)return;const t=turbines.find(x=>x.id===editingId);if(!t){editingId=null;return}const originalLat=t.lat;const originalLon=t.lon;const d=haversine(originalLat,originalLon,lat,lon);t.refLat=lat;t.refLon=lon;t.dist=d;clearClickLayer();L.circleMarker([lat,lon],{radius:8,color:'#f85149',fillColor:'#f85149',fillOpacity:.95,weight:3,interactive:false}).addTo(clickLayer);L.polyline([[originalLat,originalLon],[lat,lon]],{color:'#d29922',weight:3,dashArray:'8 4'}).addTo(clickLayer);updateRowStatus(t.id,d);saveState();const st=document.getElementById('statusText');if(st)st.textContent=editingId+' corrected. Deviation: '+d.toFixed(1)+' m';addLog('Correct',editingId+' deviation '+d.toFixed(1)+' m');editingId=null;document.getElementById('map').style.cursor=''}
+function haversine(lat1,lon1,lat2,lon2){const R=6371000;const toRad=x=>x*Math.PI/180;const dLat=toRad(lat2-lat1);const dLon=toRad(lon2-lon1);const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))}
+function initMap(){try{const el=document.getElementById('map');if(!el||!window.L){setTimeout(initMap,80);return}if(!map){map=L.map('map',{preferCanvas:true}).setView([37.39,106.38],12);markLayer=L.layerGroup().addTo(map);clickLayer=L.layerGroup().addTo(map);const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap',maxZoom:19});const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles &copy; Esri',maxZoom:19});window._baseLayers={osm,sat};sat.addTo(map);window._currentBase='satellite';const baseEl=document.getElementById('baseToggle');if(baseEl){baseEl.style.cursor='pointer';baseEl.title='Switch basemap';baseEl.onclick=()=>{const next=window._currentBase==='osm'?'satellite':'osm';map.removeLayer(window._baseLayers[window._currentBase]);map.addLayer(window._baseLayers[next]);window._currentBase=next;baseEl.textContent=next==='osm'?'Basemap: OpenStreetMap':'Basemap: Satellite'}}}if(map.invalidateSize)map.invalidateSize()}catch(e){addLog('Error','initMap failed')}}
+function loadTurbines(list){try{if(!markLayer||!clickLayer||!map){initMap();setTimeout(()=>loadTurbines(list),120);return}markers={};if(markLayer)markLayer.clearLayers();if(clickLayer)clickLayer.clearLayers();selId=null;const tbody=document.getElementById('tbl');if(!tbody){addLog('Error','table missing');return}tbody.innerHTML='';list.forEach(t=>{const row=document.createElement('tr');row.id='r_'+t.id;const s=status(t.dist);const isCorrected=t.refLat!==undefined&&t.refLon!==undefined;const lat=isCorrected?t.refLat:t.lat;const lon=isCorrected?t.refLon:t.lon;row.innerHTML='<td style="font-family:\'SF Mono\',Monaco,monospace;font-size:10px;color:var(--tx3)">'+t.id+'</td>'+'<td style="font-family:\'SF Mono\',Monaco,monospace;font-size:10px;color:var(--tx3)">'+t.lat.toFixed(6)+', '+t.lon.toFixed(6)+'</td>'+'<td style="font-family:\'SF Mono\',Monaco,monospace;font-size:10px;color:var(--tx3)">'+(isCorrected?t.refLat.toFixed(6)+', '+t.refLon.toFixed(6):'—')+'</td>'+'<td><span class="dt '+colorForStatus(s)+'">'+fmtDist(t.dist)+'</span></td>'+'<td><span class="bdg '+s+'">'+statusLabel(s)+'</span></td>'+'<td><div class="acts"><button class="ib" data-act="edit" data-id="'+t.id+'" title="Correct">✏️</button></div></td>';row.style.cursor='pointer';row.addEventListener('click',()=>locateTurbine(t.id));tbody.appendChild(row);const m=L.circleMarker([lat,lon],{radius:7,color:isCorrected?'#f85149':'#58a6ff',fillColor:isCorrected?'#f85149':'#58a6ff',fillOpacity:.9,weight:2,interactive:false,bubblingMouseEvents:false});m.addTo(markLayer);markers[t.id]=m});tbody.querySelectorAll('[data-act="edit"]').forEach(btn=>btn.onclick=()=>startEdit(btn.dataset.id));updateKPI()}catch(e){addLog('Error','loadTurbines failed: '+((e&&e.message)?e.message:String(e)))}}
+function fitAll(){if(!turbines.length||!map)return;const b=L.latLngBounds(turbines.map(t=>[t.lat,t.lon]));map.flyToBounds(b,{padding:[36,36],duration:.9})}
+function autoStart(){clearClickLayer();editingId=null;locateTurbine(turbines[0].id);addLog('Auto','Viewing 1/'+turbines.length)}
+function importCSV(ev){const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{const raw=e.target.result.replace(/\uFEFF/g,'');const lines=raw.split(/\r?\n/).filter(Boolean);if(!lines.length)return;const header=lines[0].split(',').map(s=>s.trim().replace(/^"|"$/g,''));let updatedCount=0;let notFoundIds=[];for(let i=1;i<lines.length;i++){const cols=lines[i].split(',').map(s=>s.trim().replace(/^"|"$/g,''));if(cols.length<2)continue;const row={};header.forEach((h,idx)=>row[h]=cols[idx]);const wtid=(row.wtid||row.id||row.ID||row.turbine_id||'').trim();const lat=parseFloat(row.lat||row.latitude||row.Latitude||row.LAT||row.lon);const lon=parseFloat(row.lon||row.longitude||row.Longitude||row.LON||row.lng||row.lat);const dist=parseFloat(row.distance_m||row.dist||row.deviation_m);const st=(row.status||row.STATUS||'').toLowerCase();if(!wtid)continue;const t=turbines.find(x=>x.id===wtid);if(t){if(!isNaN(lat))t.lat=lat;if(!isNaN(lon))t.lon=lon;if(!isNaN(dist))t.dist=dist;if(st==='ok'||st==='合格')t.dist=t.dist!==undefined?Math.min(t.dist,19.9):0;if(st==='review'||st==='复检'||st==='wn')t.dist=t.dist!==undefined?((t.dist<20||t.dist>=100)?50:t.dist):50;if(st==='offset'||st==='偏移'||st==='er')t.dist=t.dist!==undefined?Math.max(t.dist,100):150;updatedCount++}else{notFoundIds.push(wtid)}}loadTurbines(turbines);fitAll();addLog('System','Updated '+updatedCount+' turbines from CSV');saveState();if(notFoundIds.length)addLog('Warn','Missing IDs: '+notFoundIds.join(', '));ev.target.value=''};reader.readAsText(file)}
+function exportCSV(){const header='id,original_lat,original_lon,corrected_lat,corrected_lon,deviation_m,status\n';const body=turbines.map(t=>{const lat=t.refLat!==undefined?t.refLat:t.lat;const lon=t.refLon!==undefined?t.refLon:t.lon;const d=t.dist!==undefined?t.dist:0;const s=status(d);return[t.id,t.lat,t.lon,lat,lon,d.toFixed(2),statusLabel(s)].join(',')}).join('\n');const blob=new Blob(['\uFEFF'+header+body],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='GW-'+FARM_ID+'-verified-full.csv';a.click();addLog('System','Exported corrected coordinates');saveState()}
+function saveState(){try{localStorage.setItem(KEY,JSON.stringify(turbines.map(t=>({id:t.id,lat:t.lat,lon:t.lon,refLat:t.refLat,refLon:t.refLon,dist:t.dist}))))}catch(e){}}
+function loadState(){try{const raw=localStorage.getItem(KEY);if(!raw)return;const saved=JSON.parse(raw);if(!Array.isArray(saved))return;saved.forEach(s=>{const t=turbines.find(x=>x.id===s.id);if(t){if(s.lat!==undefined)t.lat=s.lat;if(s.lon!==undefined)t.lon=s.lon;if(s.refLat!==undefined)t.refLat=s.refLat;if(s.refLon!==undefined)t.refLon=s.refLon;if(s.dist!==undefined)t.dist=s.dist}})}catch(e){}}
+function resetAll(){if(!confirm('Reset all verification results?'))return;turbines=JSON.parse(JSON.stringify(TURBINES));loadTurbines(turbines);fitAll();addLog('System','Reset all results');try{localStorage.removeItem(KEY)}catch(e){}}
+window.addEventListener('DOMContentLoaded',()=>{initMap();loadState();turbines=JSON.parse(JSON.stringify(TURBINES));loadTurbines(turbines);requestAnimationFrame(()=>{if(map&&map.invalidateSize)map.invalidateSize();fitAll()});addLog('System','Farm '+FARM_ID+' ready with '+TURBINES.length+' turbines');addLog('Tip','Click any row to view original position');addLog('Tip','Click ✏️ pencil then click map to correct position');document.getElementById('map').addEventListener('click',e=>{if(editingId){applyCorrection(e.latlng.lat,e.latlng.lng);return}});window.addEventListener('load',()=>{saveState()})});
+</script>
+</body>
+</html>
