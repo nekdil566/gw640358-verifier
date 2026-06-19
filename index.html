@@ -12,8 +12,8 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);font-family:
 .ctrls{padding:8px;background:var(--bg2);border-bottom:1px solid var(--bdr);display:flex;gap:8px}
 .btn{background:var(--bg3);color:var(--tx);border:1px solid var(--bdr);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px}
 .main{display:flex;height:calc(100vh - 40px - 40px)}
-#map{flex:1}
-.side{width:300px;background:var(--bg2);border-left:1px solid var(--bdr);overflow:auto}
+#map{flex:1;height:100%;min-height:0}
+.mapwrap{position:relative;flex:1;min-height:0}
 .side table{width:100%;border-collapse:collapse;font-size:12px}
 .side th{position:sticky;top:0;background:var(--bg3);text-align:left;padding:6px;border-bottom:1px solid var(--bdr);color:var(--tx2)}
 .side td{padding:5px 6px;border-bottom:1px solid var(--bdr);color:var(--tx2)}
@@ -37,7 +37,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);font-family:
   <button class="btn" onclick="exportCSV()">Export</button>
 </div>
 <div class="main">
-  <div style="position:relative;flex:1"><div class="pin" id="pin">Idle – click row, then Edit, then map</div><div id="map"></div></div>
+  <div class="mapwrap"><div class="pin" id="pin">Idle – click row, then Edit, then map</div><div id="map"></div></div>
   <div class="side"><table><thead><tr><th>ID</th><th>Orig</th><th>Corrected</th><th>Dist</th><th>Action</th></tr></thead><tbody id="tbl"></tbody></table></div>
 </div>
 <script src="lib/leaflet.js"></script>
@@ -122,9 +122,15 @@ function onMapClick(e){
   dLayer.clearLayers();
   L.circleMarker([lat,lon],{radius:8,color:'#f85149',fillColor:'#f85149',fillOpacity:.9,weight:3}).addTo(dLayer);
   L.polyline([[t.lat,t.lon],[lat,lon]],{color:'#d29922',weight:2,dashArray:'5 4'}).addTo(dLayer);
-  save();render();
+  save();render();buildTable();
   document.getElementById('pin').textContent='Corrected '+t.id+' — '+Math.round(d)+' m';
   editId=null;
+}
+function startOK(id){
+  const t=list.find(x=>x.id===id);
+  if(!t)return;
+  t.rlat=t.lat;t.rlon=t.lon;t.dist=0;
+  save();render();buildTable();
 }
 function render(){
   if(!mLayer)return;
@@ -145,10 +151,11 @@ function buildTable(){
   const tb=document.getElementById('tbl');tb.innerHTML='';
   list.forEach(t=>{
     const tr=document.createElement('tr');tr.id='r_'+t.id;
-    tr.innerHTML='<td style="font:10px SF Mono,monospace">'+t.id+'</td><td style="font:10px SF Mono,monospace">'+t.lat.toFixed(6)+', '+t.lon.toFixed(6)+'</td><td style="font:10px SF Mono,monospace">'+(t.rlat!==undefined?t.rlat.toFixed(6)+', '+t.rlon.toFixed(6):' - ')+'</td><td><span class="bdg" id="d_'+t.id+'"> - </span></td><td><button class="eb" id="b_'+t.id+'">✏️</button></td>';
+    tr.innerHTML='<td style="font:10px SF Mono,monospace">'+t.id+'</td><td style="font:10px SF Mono,monospace">'+t.lat.toFixed(6)+', '+t.lon.toFixed(6)+'</td><td style="font:10px SF Mono,monospace">'+(t.rlat!==undefined?t.rlat.toFixed(6)+', '+t.rlon.toFixed(6):' - ')+'</td><td><span class="bdg" id="d_'+t.id+'"> - </span></td><td><button class="eb" id="b_'+t.id+'">✏️</button><button class="eb" id="o_'+t.id+'" style="margin-left:4px">OK</button></td>';
     tr.onclick=()=>locate(t.id);
     tb.appendChild(tr);
     document.getElementById('b_'+t.id).onclick=(e)=>{e.stopPropagation();startEdit(t.id)};
+    document.getElementById('o_'+t.id).onclick=(e)=>{e.stopPropagation();startOK(t.id)};
   });
 }
 function locate(id){const t=list.find(x=>x.id===id);if(!t)return;map.flyTo([t.lat,t.lon],17);document.getElementById('pin').textContent='Original: '+id}
