@@ -3,110 +3,59 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Farm 640358 · Verifier</title>
+<title>Farm 640358 · Coordinate Verifier</title>
 <style>
-:root{--bg:#0b0f13;--bg2:#11161d;--bg3:#161b22;--bdr:#21262d;--tx:#e6edf3;--tx2:#8b949e;--red:#f85149;--blu:#58a6ff}
+:root{--bg:#0b0f13;--bg2:#11161d;--bg3:#161b22;--bdr:#21262d;--tx:#e6edf3;--tx2:#8b949e;--red:#f85149;--blu:#58a6ff;--grn:#2ea043}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,sans-serif}
 .top{height:40px;background:#0d5a22;display:flex;align-items:center;padding:0 12px;gap:10px;color:#fff;font-weight:700}
-.ctrls{padding:8px;background:var(--bg2);border-bottom:1px solid var(--bdr);display:flex;gap:8px}
+.top .sub{color:#cde8d7;font-weight:400;font-size:11px}
+.ctrls{padding:8px;background:var(--bg2);border-bottom:1px solid var(--bdr);display:flex;gap:8px;flex-wrap:wrap}
 .btn{background:var(--bg3);color:var(--tx);border:1px solid var(--bdr);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px}
+.btn:hover{border-color:#484f58}
 .main{display:flex;height:calc(100vh - 40px - 40px)}
-#map{flex:1;height:100%;min-height:0}
 .mapwrap{position:relative;flex:1;min-height:0}
+#map{width:100%;height:100%}
+.pin{position:absolute;top:8px;left:8px;background:rgba(11,15,19,.88);padding:6px 10px;border-radius:6px;border:1px solid var(--bdr);color:var(--tx);font-size:11px;z-index:999;max-width:50%}
+.side{width:340px;background:var(--bg2);border-left:1px solid var(--bdr);overflow:auto}
 .side table{width:100%;border-collapse:collapse;font-size:12px}
-.side th{position:sticky;top:0;background:var(--bg3);text-align:left;padding:6px;border-bottom:1px solid var(--bdr);color:var(--tx2)}
-.side td{padding:5px 6px;border-bottom:1px solid var(--bdr);color:var(--tx2)}
+.side th{position:sticky;top:0;background:var(--bg3);text-align:left;padding:6px;border-bottom:1px solid var(--bdr);color:var(--tx2);font-weight:600}
+.side td{padding:5px 6px;border-bottom:1px solid var(--bdr);color:var(--tx2);vertical-align:middle}
 .side tr:hover td{background:rgba(255,255,255,.03)}
-.eb{width:24px;height:24px;background:var(--bg3);border:1px solid var(--bdr);border-radius:4px;cursor:pointer;color:var(--tx);font-size:11px}
+.eb{width:22px;height:22px;background:var(--bg3);border:1px solid var(--bdr);border-radius:4px;cursor:pointer;color:var(--tx);font-size:11px;display:inline-flex;align-items:center;justify-content:center}
 .eb:hover{border-color:#484f58}
-.bdg{display:inline-block;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:800}
-.bdg.ok{color:#3fb950;border:1px solid rgba(46,160,67,.4)}
-.bdg.wn{color:#e3b341;border:1px solid rgba(210,153,34,.4)}
-.bdg.er{color:#ff6b63;border:1px solid rgba(248,81,73,.4)}
-.pin{position:absolute;top:8px;left:8px;background:rgba(11,15,19,.85);padding:6px 10px;border-radius:6px;border:1px solid var(--bdr);color:var(--tx);font-size:11px;z-index:999}
+.bdg{display:inline-block;padding:2px 6px;border-radius:999px;font-size:10px;font-weight:800;min-width:32px;text-align:center}
+.bdg.ok{color:#3fb950;border:1px solid rgba(46,160,67,.4);background:rgba(46,160,67,.08)}
+.bdg.wn{color:#e3b341;border:1px solid rgba(210,153,34,.4);background:rgba(210,153,34,.08)}
+.bdg.er{color:#ff6b63;border:1px solid rgba(248,81,73,.4);background:rgba(248,81,73,.08)}
+input[type=file]{display:none}
+.empty{padding:40px 20px;text-align:center;color:var(--tx2);font-size:13px}
 </style>
 <link rel="stylesheet" href="lib/leaflet.css">
 </head>
 <body>
-<div class="top"><span>Farm 640358</span><span style="color:#cde8d7;font-weight:400;font-size:11px">· Manual verifier</span></div>
+<div class="top"><span>Farm 640358</span><span class="sub">· Coordinate Verifier (empty until CSV upload)</span></div>
 <div class="ctrls">
   <button class="btn" onclick="document.getElementById('f').click()">📥 Import CSV</button>
   <input type="file" id="f" accept=".csv" onchange="importCSV(event)">
-  <button class="btn" onclick="resetAll()">Reset</button>
-  <button class="btn" onclick="exportCSV()">Export</button>
+  <button class="btn" onclick="resetAll()">Reset All</button>
+  <button class="btn" onclick="exportCSV()">📤 Export Results</button>
+  <span style="font-size:11px;color:var(--tx2);margin-left:auto" id="count">0 turbines</span>
 </div>
 <div class="main">
-  <div class="mapwrap"><div class="pin" id="pin">Idle – click row, then Edit, then map</div><div id="map"></div></div>
-  <div class="side"><table><thead><tr><th>ID</th><th>Orig</th><th>Corrected</th><th>Dist</th><th>Action</th></tr></thead><tbody id="tbl"></tbody></table></div>
+  <div class="mapwrap"><div class="pin" id="pin">Upload a CSV to begin</div><div id="map"></div></div>
+  <div class="side"><table><thead><tr><th>ID</th><th>Original</th><th>Corrected</th><th>Dist</th><th>Actions</th></tr></thead><tbody id="tbl"></tbody></table></div>
 </div>
 <script src="lib/leaflet.js"></script>
 <script>
-const TURBINES=[
-{"id":"6403580001","lat":37.3733,"lon":106.4133},
-{"id":"6403580002","lat":37.3700,"lon":106.4058},
-{"id":"6403580003","lat":37.3700,"lon":106.3811},
-{"id":"6403580004","lat":37.3789,"lon":106.3736},
-{"id":"6403580005","lat":37.3886,"lon":106.3653},
-{"id":"6403580006","lat":37.3972,"lon":106.3594},
-{"id":"6403580007","lat":37.4061,"lon":106.3544},
-{"id":"6403580008","lat":37.4150,"lon":106.3508},
-{"id":"6403580009","lat":37.4236,"lon":106.3486},
-{"id":"6403580010","lat":37.4322,"lon":106.3478},
-{"id":"6403580011","lat":37.3786,"lon":106.4281},
-{"id":"6403580012","lat":37.3769,"lon":106.4197},
-{"id":"6403580013","lat":37.3753,"lon":106.4047},
-{"id":"6403580014","lat":37.3736,"lon":106.3892},
-{"id":"6403580015","lat":37.3731,"lon":106.3750},
-{"id":"6403580016","lat":37.3750,"lon":106.3603},
-{"id":"6403580017","lat":37.3806,"lon":106.3467},
-{"id":"6403580018","lat":37.3886,"lon":106.3347},
-{"id":"6403580019","lat":37.4181,"lon":106.4317},
-{"id":"6403580020","lat":37.4233,"lon":106.4261},
-{"id":"6403580021","lat":37.3811,"lon":106.4406},
-{"id":"6403580022","lat":37.3844,"lon":106.4378},
-{"id":"6403580023","lat":37.3900,"lon":106.4350},
-{"id":"6403580024","lat":37.3961,"lon":106.4322},
-{"id":"6403580025","lat":37.4025,"lon":106.4292},
-{"id":"6403580026","lat":37.4092,"lon":106.4239},
-{"id":"6403580027","lat":37.4089,"lon":106.4125},
-{"id":"6403580028","lat":37.4075,"lon":106.4011},
-{"id":"6403580029","lat":37.4056,"lon":106.3897},
-{"id":"6403580030","lat":37.4044,"lon":106.3781},
-{"id":"6403580031","lat":37.4036,"lon":106.3667},
-{"id":"6403580032","lat":37.4069,"lon":106.3558},
-{"id":"6403580033","lat":37.4136,"lon":106.3461},
-{"id":"6403580034","lat":37.4472,"lon":106.4078},
-{"id":"6403580035","lat":37.4492,"lon":106.3953},
-{"id":"6403580036","lat":37.4492,"lon":106.3828},
-{"id":"6403580037","lat":37.4478,"lon":106.3703},
-{"id":"6403580038","lat":37.4456,"lon":106.3578},
-{"id":"6403580039","lat":37.4428,"lon":106.3450},
-{"id":"6403580040","lat":37.4386,"lon":106.3331},
-{"id":"6403580041","lat":37.4344,"lon":106.3214},
-{"id":"6403580042","lat":37.3894,"lon":106.4150},
-{"id":"6403580043","lat":37.3864,"lon":106.4125},
-{"id":"6403580044","lat":37.3847,"lon":106.4058},
-{"id":"6403580045","lat":37.3744,"lon":106.3983},
-{"id":"6403580046","lat":37.3697,"lon":106.3892},
-{"id":"6403580047","lat":37.4000,"lon":106.4239},
-{"id":"6403580048","lat":37.3908,"lon":106.4353},
-{"id":"6403580049","lat":37.4081,"lon":106.4394},
-{"id":"6403580050","lat":37.4253,"lon":106.3342},
-{"id":"6403580051","lat":37.4267,"lon":106.3236},
-{"id":"6403580052","lat":37.4050,"lon":106.4483},
-{"id":"6403580053","lat":37.3972,"lon":106.4497},
-{"id":"6403580054","lat":37.3875,"lon":106.4472},
-{"id":"6403580055","lat":37.4389,"lon":106.3928}
-];
-let map,mLayer,dLayer,list;
+let map,mLayer,dLayer,list=[];
 let editId=null;
-const KEY='gw640358_v1';
+const KEY='gw640358_v2';
 function dist(a,b,c,d){const R=6371000;const toR=x=>x*Math.PI/180;const dLat=toR(c-a);const dLon=toR(d-b);const x=Math.sin(dLat/2)**2+Math.cos(toR(a))*Math.cos(toR(c))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
 function status(d){if(!d&&d!==0)return'wn';if(d<20)return'ok';if(d<100)return'wn';return'er'}
-function init(){
+function initMap(){
   if(map)return;
-  map=L.map('map').setView([37.39,106.38],11);
+  map=L.map('map',{preferCanvas:true}).setView([37.39,106.38],11);
   mLayer=L.layerGroup().addTo(map);
   dLayer=L.layerGroup().addTo(map);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}).addTo(map);
@@ -119,27 +68,21 @@ function onMapClick(e){
   const lat=e.latlng.lat;const lon=e.latlng.lng;
   const d=dist(t.lat,t.lon,lat,lon);
   t.rlat=lat;t.rlon=lon;t.dist=d;
-  dLayer.clearLayers();
-  L.circleMarker([lat,lon],{radius:8,color:'#f85149',fillColor:'#f85149',fillOpacity:.9,weight:3}).addTo(dLayer);
-  L.polyline([[t.lat,t.lon],[lat,lon]],{color:'#d29922',weight:2,dashArray:'5 4'}).addTo(dLayer);
-  save();render();buildTable();
+  t.manual=true;
+  save();
+  render();
+  buildTable();
   document.getElementById('pin').textContent='Corrected '+t.id+' — '+Math.round(d)+' m';
   editId=null;
-}
-function startOK(id){
-  const t=list.find(x=>x.id===id);
-  if(!t)return;
-  t.rlat=t.lat;t.rlon=t.lon;t.dist=0;
-  save();render();buildTable();
 }
 function render(){
   if(!mLayer)return;
   mLayer.clearLayers();dLayer.clearLayers();
   list.forEach(t=>{
     const lat=t.rlat||t.lat;const lon=t.rlon||t.lon;
-    const c=t.rlat!==undefined?'#f85149':'#58a6ff';
+    const c=(t.rlat!==undefined&&t.manual)?'#f85149':'#58a6ff';
     L.circleMarker([lat,lon],{radius:6,color:c,fillColor:c,fillOpacity:.85,weight:2,interactive:false}).addTo(mLayer);
-    if(t.rlat!==undefined){
+    if(t.rlat!==undefined&&t.manual){
       L.circleMarker([t.rlat,t.rlon],{radius:9,color:'#f85149',fillColor:'#f85149',fillOpacity:.9,weight:3}).addTo(dLayer);
       L.polyline([[t.lat,t.lon],[t.rlat,t.rlon]],{color:'#d29922',weight:2,dashArray:'5 4'}).addTo(dLayer);
     }
@@ -148,30 +91,77 @@ function render(){
   });
 }
 function buildTable(){
-  const tb=document.getElementById('tbl');tb.innerHTML='';
+  const tb=document.getElementById('tbl');
+  tb.innerHTML='';
+  if(list.length===0){tb.innerHTML='<tr><td colspan="5" class="empty">No turbines loaded. Import a CSV to start.</td></tr>';document.getElementById('count').textContent='0 turbines';return}
+  document.getElementById('count').textContent=list.length+' turbines';
   list.forEach(t=>{
     const tr=document.createElement('tr');tr.id='r_'+t.id;
-    tr.innerHTML='<td style="font:10px SF Mono,monospace">'+t.id+'</td><td style="font:10px SF Mono,monospace">'+t.lat.toFixed(6)+', '+t.lon.toFixed(6)+'</td><td style="font:10px SF Mono,monospace">'+(t.rlat!==undefined?t.rlat.toFixed(6)+', '+t.rlon.toFixed(6):' - ')+'</td><td><span class="bdg" id="d_'+t.id+'"> - </span></td><td><button class="eb" id="b_'+t.id+'">✏️</button><button class="eb" id="o_'+t.id+'" style="margin-left:4px">OK</button></td>';
+    const corrected=t.rlat!==undefined?t.rlat.toFixed(6)+', '+t.rlon.toFixed(6):' - ';
+    const distText=t.dist===undefined?' - ':Math.round(t.dist)+'m';
+    tr.innerHTML='<td style="font:10px SF Mono,monospace">'+t.id+'</td>'
+      +'<td style="font:10px SF Mono,monospace">'+t.lat.toFixed(6)+', '+t.lon.toFixed(6)+'</td>'
+      +'<td style="font:10px SF Mono,monospace">'+corrected+'</td>'
+      +'<td><span class="bdg" id="d_'+t.id+'">'+distText+'</span></td>'
+      +'<td><button class="eb" id="b_'+t.id+'" title="Edit location">✏️</button>'
+      +'<button class="eb" id="o_'+t.id+'" title="Mark OK" style="margin-left:3px">OK</button>'
+      +'<button class="eb" id="x_'+t.id+'" title="Reset row" style="margin-left:3px">↺</button></td>';
     tr.onclick=()=>locate(t.id);
     tb.appendChild(tr);
     document.getElementById('b_'+t.id).onclick=(e)=>{e.stopPropagation();startEdit(t.id)};
     document.getElementById('o_'+t.id).onclick=(e)=>{e.stopPropagation();startOK(t.id)};
+    document.getElementById('x_'+t.id).onclick=(e)=>{e.stopPropagation();resetRow(t.id)};
   });
 }
 function locate(id){const t=list.find(x=>x.id===id);if(!t)return;map.flyTo([t.lat,t.lon],17);document.getElementById('pin').textContent='Original: '+id}
-function startEdit(id){
-  editId=id;
-  const t=list.find(x=>x.id===id);
-  if(!t)return;
-  map.flyTo([t.lat,t.lon],17);
-  document.getElementById('pin').textContent='Click map at actual turbine: '+id;
+function startEdit(id){editId=id;const t=list.find(x=>x.id===id);if(!t)return;map.flyTo([t.lat,t.lon],17);document.getElementById('pin').textContent='Click map at actual turbine: '+id}
+function startOK(id){const t=list.find(x=>x.id===id);if(!t)return;t.rlat=t.lat;t.rlon=t.lon;t.dist=0;t.manual=false;save();render();buildTable();document.getElementById('pin').textContent='Marked OK: '+id}
+function resetRow(id){const t=list.find(x=>x.id===id);if(!t)return;t.rlat=undefined;t.rlon=undefined;t.dist=undefined;t.manual=false;save();render();buildTable();document.getElementById('pin').textContent='Reset: '+id}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(list.map(t=>({id:t.id,lat:t.lat,lon:t.lon,rlat:t.rlat,rlon:t.rlon,dist:t.dist,manual:!!t.manual}))))}catch(e){}}
+function load(){try{const s=localStorage.getItem(KEY);if(!s)return;const j=JSON.parse(s);if(j&&j.length){list=j.map(t=>({id:t.id,lat:t.lat||0,lon:t.lon||0,rlat:t.rlat,rlon:t.rlon,dist:t.dist,manual:!!t.manual}));buildTable();render();document.getElementById('count').textContent=list.length+' turbines';document.getElementById('pin').textContent='Loaded '+list.length+' turbines from saved state'}}catch(e){}}
+function resetAll(){if(!confirm('Clear all data and reset?'))return;list=[];save();buildTable();render();document.getElementById('count').textContent='0 turbines';document.getElementById('pin').textContent='Upload a CSV to begin'}
+function exportCSV(){
+  if(!list.length){alert('No data to export. Import a CSV first.');return}
+  let csv='id,original_lat,original_lon,corrected_lat,corrected_lon,distance_m,status\\n';
+  list.forEach(t=>{
+    const lat=t.rlat!==undefined?t.rlat:t.lat;
+    const lon=t.rlon!==undefined?t.rlon:t.lon;
+    const d=t.dist!==undefined?Math.round(t.dist):0;
+    const s=t.manual?(t.dist===0?'ok':'er'):'wn';
+    csv+=t.id+','+t.lat+','+t.lon+','+lat+','+lon+','+d+','+s+'\\n';
+  });
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='GW640358-results-'+Date.now()+'.csv';a.click();
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(list.map(t=>({id:t.id,rlat:t.rlat,rlon:t.rlon,dist:t.dist}))))}catch(e){}}
-function load(){try{const s=localStorage.getItem(KEY);if(!s)return;JSON.parse(s).forEach(x=>{const t=list.find(y=>y.id===x.id);if(t){t.rlat=x.rlat;t.rlon=x.rlon;t.dist=x.dist}})}catch(e){}}
-function resetAll(){if(!confirm('Reset all?'))return;list=JSON.parse(JSON.stringify(TURBINES));save();buildTable();render()}
-function exportCSV(){let csv='id,orig_lat,orig_lon,corr_lat,corr_lon,dist_m,status\n';list.forEach(t=>{const lat=t.rlat!==undefined?t.rlat:t.lat;const lon=t.rlon!==undefined?t.rlon:t.lon;const d=t.dist!==undefined?Math.round(t.dist):0;csv+=t.id+','+t.lat+','+t.lon+','+lat+','+lon+','+d+','+status(d)+'\n'});const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='GW640358.csv';a.click()}
-function importCSV(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const lines=e.target.result.split(/\r?\n/).filter(Boolean);if(lines.length<2)return;const hdr=lines[0].split(',');let n=0;for(let i=1;i<lines.length;i++){const c=lines[i].split(',');const row={};hdr.forEach((h,j)=>row[h.trim()]=c[j]?c[j].trim():'');const id=(row.wtid||row.id||row.turbine_id||'');if(!id)continue;const t=list.find(x=>x.id===id);if(!t)continue;const clat=parseFloat(row.lat_corrected||row.corrected_lat||row.lat||row.latitude);const clon=parseFloat(row.lon_corrected||row.corrected_lon||row.lon||row.longitude);const dst=parseFloat(row.distance_m||row.deviation_m||row.dist);if(!isNaN(clat))t.rlat=clat;if(!isNaN(clon))t.rlon=clon;if(!isNaN(dst))t.dist=dst;n++}save();buildTable();render()};r.readAsText(f)}
-document.addEventListener('DOMContentLoaded',()=>{list=JSON.parse(JSON.stringify(TURBINES));init();load();buildTable();render();document.getElementById('pin').textContent='Farm 640358 ready — '+list.length+' turbines'});
+function importCSV(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const raw=e.target.result.replace(/\\uFEFF/g,'');
+    const lines=raw.split(/\\r?\\n/).filter(Boolean);
+    if(lines.length<2){alert('CSV appears empty');return}
+    const hdr=lines[0].split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+    const rows=[];
+    for(let i=1;i<lines.length;i++){
+      const c=lines[i].split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+      const row={};hdr.forEach((h,j)=>row[h]=c[j]||'');
+      const id=(row.wtid||row.id||row.turbine_id||row.turbine||row['ID']||'').trim();
+      if(!id)continue;
+      const lat=parseFloat(row.lat_original||row.lat||row.latitude||row.lat_corrected||row.corrected_lat);
+      const lon=parseFloat(row.lon_original||row.lon||row.longitude||row.lon_corrected||row.corrected_lon);
+      if(isNaN(lat)||isNaN(lon))continue;
+      rows.push({id,lat,lon});
+    }
+    if(!rows.length){alert('No valid turbine rows found');return}
+    list=rows;
+    save();buildTable();render();
+    document.getElementById('count').textContent=list.length+' turbines';
+    document.getElementById('pin').textContent='Imported '+list.length+' turbines — click row to locate';
+    map.flyTo([list[0].lat,list[0].lon],13);
+  };
+  r.readAsText(f);
+  ev.target.value='';
+}
+document.addEventListener('DOMContentLoaded',()=>{initMap();load()});
 </script>
 </body>
 </html>
