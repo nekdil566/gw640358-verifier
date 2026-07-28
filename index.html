@@ -5,49 +5,75 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Farm 640358 · Manual Verifier</title>
 <style>
-:root{--bg:#0b0f13;--bg2:#11161d;--bg3:#161b22;--bdr:#21262d;--tx:#e6edf3;--tx2:#8b949e;--red:#f85149;--blu:#58a6ff}
+:root{--bg:#0b0f13;--bg2:#11161d;--bg3:#161b22;--bdr:#21262d;--tx:#e6edf3;--tx2:#8b949e;--red:#f85149;--blu:#58a6ff;--grn:#3fb950;--amb:#d29922}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif}
 .wrap{height:100vh;display:flex;flex-direction:column;overflow:hidden}
 .top{height:40px;background:#0d5a22;display:flex;align-items:center;padding:0 12px;gap:10px;color:#fff;font-weight:700}
 .ctrls{padding:8px;background:var(--bg2);border-bottom:1px solid var(--bdr);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .btn{background:var(--bg3);color:var(--tx);border:1px solid var(--bdr);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px}
+.btn:hover{border-color:#484f58}
+.btn.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
 .main{flex:1;display:flex;min-height:0}
 .maparea{position:relative;flex:1;min-height:0}
 #map{width:100%;height:100%}
 .pin{position:absolute;top:8px;left:8px;background:rgba(11,15,19,.88);padding:8px 12px;border-radius:6px;border:1px solid var(--bdr);color:var(--tx);font-size:12px;z-index:999;min-width:220px}
-.side{width:340px;background:var(--bg2);border-left:1px solid var(--bdr);display:flex;flex-direction:column;min-height:0}
+.kpi{position:absolute;top:8px;right:8px;background:rgba(11,15,19,.88);padding:8px 12px;border-radius:6px;border:1px solid var(--bdr);font-size:12px;z-index:999;display:flex;gap:14px}
+.kpi b{color:var(--tx)} .kpi .ok{color:var(--grn)} .kpi .wn{color:var(--amb)} .kpi .er{color:var(--red)}
+.side{width:360px;background:var(--bg2);border-left:1px solid var(--bdr);display:flex;flex-direction:column;min-height:0}
 .side .bar{height:32px;background:var(--bg3);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 10px;justify-content:space-between;font-size:12px;font-weight:700}
 .rows{flex:1;overflow:auto}
 .side table{width:100%;border-collapse:collapse;font-size:12px}
 .side th{position:sticky;top:0;background:var(--bg3);text-align:left;padding:6px 8px;border-bottom:1px solid var(--bdr);color:var(--tx2);font-weight:600}
 .side td{padding:5px 8px;border-bottom:1px solid var(--bdr);color:var(--tx2);white-space:nowrap}
 .side tr:hover td{background:rgba(255,255,255,.03)}
-.eb{width:28px;height:28px;background:var(--bg3);color:var(--tx);border:1px solid var(--bdr);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.side tr.active td{background:rgba(88,166,255,.12)}
+.bdg{padding:1px 7px;border-radius:10px;font-size:11px;font-weight:700;display:inline-block}
+.bdg.ok{background:rgba(63,185,80,.15);color:var(--grn)}
+.bdg.wn{background:rgba(210,153,34,.15);color:var(--amb)}
+.bdg.er{background:rgba(248,81,73,.15);color:var(--red)}
+.bdg.na{background:rgba(139,148,158,.15);color:var(--tx2)}
+.eb{width:26px;height:26px;background:var(--bg3);color:var(--tx);border:1px solid var(--bdr);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:12px;margin-right:2px}
 .eb:hover{border-color:#484f58}
+.eb.ok{color:var(--grn)} .eb.rst{color:var(--tx2)}
 input[type=file]{display:none}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--tx2);border-top-color:transparent;border-radius:50%;animation:r .6s linear infinite;vertical-align:-2px}
+@keyframes r{to{transform:rotate(360deg)}}
 </style>
 <link rel="stylesheet" href="lib/leaflet.css">
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><b>Farm 640358</b><span style="color:#cde8d7;font-weight:400;font-size:11px"> Manual verifier</span></div>
+  <div class="top"><b>Farm 640358</b><span style="color:#cde8d7;font-weight:400;font-size:11px"> Manual verifier v1.0</span></div>
   <div class="ctrls">
-    <button class="btn" onclick="document.getElementById('f').click()">Upload CSV</button>
-    <input type="file" id="f" accept=".csv" onchange="importCSV(event)">
+    <button class="btn" onclick="document.getElementById('csv').click()">Upload CSV</button>
+    <input type="file" id="csv" accept=".csv" onchange="importCSV(event)">
+    <button class="btn" onclick="document.getElementById('pdf').click()">Upload PDF</button>
+    <input type="file" id="pdf" accept=".pdf" onchange="importPDF(event)">
     <button class="btn" onclick="exportCSV()">Export corrected CSV</button>
+    <button class="btn" onclick="resetAll()">Reset all</button>
+    <span id="hint" style="font-size:12px;color:var(--tx2)"></span>
     <span id="kpi" style="margin-left:auto;font-size:12px;color:var(--tx2)"></span>
   </div>
   <div class="main">
     <div class="maparea">
-      <div class="pin" id="pin"></div>
+      <div class="pin" id="pin">Upload a CSV or PDF to begin</div>
+      <div class="kpi" id="kpiBox" style="display:none">
+        <span class="ok">OK <b id="kOk">0</b></span>
+        <span class="wn">Review <b id="kWn">0</b></span>
+        <span class="er">Offset <b id="kEr">0</b></span>
+        <span>Total <b id="kTot">0</b></span>
+      </div>
       <div id="map"></div>
     </div>
     <div class="side">
       <div class="bar"><span>Activity</span><span id="lc">0</span></div>
-      <div class="rows" id="log" style="background:var(--bg);padding:10px;font:11px SF Mono,Monaco,monospace;color:var(--tx2)"></div>
+      <div class="rows" id="log" style="background:var(--bg);padding:10px;font:11px SF Mono,Monaco,monospace;color:var(--tx2);max-height:38%"></div>
       <div class="bar"><span>Turbines</span><span id="tc" style="font-size:11px;font-weight:600;color:var(--tx2)">0</span></div>
-      <div class="rows"><table><thead><tr><th>ID</th><th>Original</th><th>Corrected</th><th>Dist</th><th>Actions</th></tr></thead><tbody id="tbl"></tbody></table></div>
+      <div class="rows">
+        <table><thead><tr><th>ID</th><th>Original</th><th>Corrected</th><th>Dist</th><th>Actions</th></tr></thead>
+        <tbody id="tbl"></tbody></table>
+      </div>
     </div>
   </div>
 </div>
@@ -55,20 +81,156 @@ input[type=file]{display:none}
 <script>
 let map,mLayer,dLayer;
 let list=[];
-let editId=null;
-const KEY='gw640358_path1_v2';
+let editId=null, activeId=null, importSeq=0;
+const KEY='gw640358_manual_v1';
+const redo=[];               // history of edits for Undo/Back
+
 function log(a,b){const d=new Date().toLocaleTimeString();const el=document.getElementById('log');const line=document.createElement('div');line.style.marginBottom='4px';line.innerHTML='<div style="color:var(--tx2)">'+d+'</div><div><b style="color:var(--blu)">'+a+'</b> '+b+'</div>';el.prepend(line);document.getElementById('lc').textContent=parseInt(document.getElementById('lc').textContent||0)+1}
 function dist(a,b,c,d){const R=6371000;const toR=x=>x*Math.PI/180;const dLat=toR(c-a);const dLon=toR(d-b);const x=Math.sin(dLat/2)**2+Math.cos(toR(a))*Math.cos(toR(c))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
-function status(d){if(d===undefined||d===null)return'wn';if(d===0)return'ok';if(d<20)return'ok';if(d<100)return'wn';return'er'}
-function initMap(){if(map)return;map=L.map('map',{preferCanvas:true}).setView([37.39,106.38],12);mLayer=L.layerGroup().addTo(map);dLayer=L.layerGroup().addTo(map);L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}).addTo(map);map.on('click',onMapClick)}
-function render(){if(!mLayer||!dLayer)return;mLayer.clearLayers();dLayer.clearLayers();list.forEach(t=>{const lat=t.clat!==undefined?t.clat:t.lat;const lon=t.clon!==undefined?t.clon:t.lon;const c=t.clat!==undefined?'#f85149':'#58a6ff';L.circleMarker([lat,lon],{radius:6,color:c,fillColor:c,fillOpacity:.85,weight:2,interactive:false,bubblingMouseEvents:false}).addTo(mLayer);if(t.clat!==undefined){L.circleMarker([t.clat,t.clon],{radius:9,color:'#f85149',fillColor:'#f85149',fillOpacity:.9,weight:3}).addTo(dLayer);L.polyline([[t.lat,t.lon],[t.clat,t.clon]],{color:'#d29922',weight:2,dashArray:'5 4'}).addTo(dLayer)}const el=document.getElementById('d_'+t.id);if(el){const s=status(t.dist);el.className='bdg '+s;el.textContent=t.dist===undefined?' - ':Math.round(t.dist)+'m'}})}
-function buildTable(){const tb=document.getElementById('tbl');tb.innerHTML='';list.forEach(t=>{const tr=document.createElement('tr');tr.id='r_'+t.id;const orig=t.lat.toFixed(6)+', '+t.lon.toFixed(6);const corr=t.clat!==undefined?t.clat.toFixed(6)+', '+t.clon.toFixed(6):' - ';tr.innerHTML='<td style="font:10px SF Mono,monospace">'+t.id+'</td><td style="font:10px SF Mono,monospace">'+orig+'</td><td style="font:10px SF Mono,monospace">'+corr+'</td><td><span class="bdg" id="d_'+t.id+'"> - </span></td><td><button class="eb" id="eb_'+t.id+'" title="Edit">✏️</button><button class="eb" id="ok_'+t.id+'" title="Mark OK">OK</button><button class="eb" id="rst_'+t.id+'" title="Reset row">↺</button></td>';tr.onclick=()=>locate(t.id);tb.appendChild(tr);document.getElementById('eb_'+t.id).onclick=(e)=>{e.stopPropagation();startEdit(t.id)};document.getElementById('ok_'+t.id).onclick=(e)=>{e.stopPropagation();markOK(t.id)};document.getElementById('rst_'+t.id).onclick=(e)=>{e.stopPropagation();resetRow(t.id)}})}
-function locate(id){const t=list.find(x=>x.id===id);if(!t)return;map.flyTo([t.lat,t.lon],18);document.getElementById('pin').textContent='Original: '+id}
-function startEdit(id){const t=list.find(x=>x.id===id);if(!t)return;editId=id;map.flyTo([t.lat,t.lon],18);document.getElementById('pin').textContent='Click map at actual turbine: '+id}
-function onMapClick(e){if(!editId)return;const t=list.find(x=>x.id===editId);if(!t)return;const lat=e.latlng.lat;const lon=e.latlng.lng;const d=dist(t.lat,t.lon,lat,lon);t.clat=lat;t.clon=lon;t.dist=d;t.status=status(d);save();render();buildTable();document.getElementById('pin').textContent='Corrected '+t.id+' - '+Math.round(d)+' m';log('Correct',t.id+' moved '+Math.round(d)+' m');editId=null}
-function markOK(id){const t=list.find(x=>x.id===id);if(!t)return;t.clat=t.lat;t.clon=t.lon;t.dist=0;t.status='ok';log('OK',id+' marked correct');save();render();buildTable()}
-function resetRow(id){const t=list.find(x=>x.id===id);if(!t)return;delete t.clat;delete t.clon;delete t.dist;delete t.status;log('Reset',id+' cleared for re-edit');save();render();buildTable()}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(list))}catch(e){}};function importCSV(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const raw=e.target.result.replace(/\uFEFF/g,'');const lines=raw.split(/\r?\n/).filter(Boolean);if(lines.length<2)return;const hdr=lines[0].split(',').map(s=>s.trim().replace(/^"|"$/g,''));let n=0;list=[];for(let i=1;i<lines.length;i++){const c=lines[i].split(',').map(s=>s.trim().replace(/^"|"$/g,''));const row={};hdr.forEach((h,j)=>row[h]=c[j]?c[j]:'');const id=(row.wtid||row.id||row.turbine_id||'').trim();if(!id)continue;const lat=parseFloat(row.lat_corrected||row.corrected_lat||row.lat||row.latitude||row.Latitude);const lon=parseFloat(row.lon_corrected||row.corrected_lon||row.lon||row.longitude||row.Longitude);if(isNaN(lat)||isNaN(lon))continue;list.push({id,lat,lon});n++}save();buildTable();render();document.getElementById('pin').textContent='Loaded '+n+' turbines';document.getElementById('tc').textContent=n;log('CSV','Loaded '+n+' turbines')};r.readAsText(f)};function exportCSV(){let csv='id,original_lat,original_lon,corrected_lat,corrected_lon,deviation_m,status\n';list.forEach(t=>{const lat=t.clat!==undefined?t.clat:t.lat;const lon=t.clon!==undefined?t.clon:t.lon;const d=t.dist!==undefined?Math.round(t.dist):0;const s=t.status||status(d);csv+=t.id+','+t.lat+','+t.lon+','+lat+','+lon+','+d+','+s+'\n'});const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='GW640358-manual-'+Date.now()+'.csv';a.click();log('Export','Downloaded corrected CSV ('+list.length+' rows)')};function resetAll(){if(!confirm('Clear all turbines and reset?'))return;list=[];save();buildTable();render();document.getElementById('pin').textContent='Upload a CSV to begin';document.getElementById('tc').textContent='0';log('Reset','All cleared')};document.addEventListener('DOMContentLoaded',()=>{initMap()});
+function status(d){if(d===undefined||d===null)return'na';if(d<20)return'ok';if(d<100)return'wn';return'er'}
+
+function initMap(){if(map)return;map=L.map('map',{preferCanvas:true}).setView([37.39,106.38],12);L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}).addTo(map);map.on('click',onMapClick)}
+
+function render(){
+  if(!mLayer||!dLayer){mLayer=L.layerGroup().addTo(map);dLayer=L.layerGroup().addTo(map)}
+  mLayer.clearLayers();dLayer.clearLayers();
+  list.forEach(t=>{
+    const lat=t.clat!==undefined?t.clat:t.lat, lon=t.clon!==undefined?t.clon:t.lon;
+    const c=t.clat!==undefined?'#f85149':'#58a6ff';
+    L.circleMarker([lat,lon],{radius:6,color:c,fillColor:c,fillOpacity:.85,weight:2,interactive:false}).addTo(mLayer);
+    if(t.clat!==undefined){
+      L.circleMarker([t.clat,t.clon],{radius:9,color:'#f85149',fillColor:'#f85149',fillOpacity:.9,weight:3}).addTo(dLayer);
+      L.polyline([[t.lat,t.lon],[t.clat,t.clon]],{color:'#d29922',weight:2,dashArray:'5 4'}).addTo(dLayer)
+    }
+    const el=document.getElementById('d_'+t.id);
+    if(el){const s=status(t.dist);el.className='bdg '+s;el.textContent=t.dist===undefined?' - ':Math.round(t.dist)+'m'}
+  });
+  updateKPI();
+}
+
+function updateKPI(){
+  let ok=0,wn=0,er=0;
+  list.forEach(t=>{const s=status(t.dist);if(s==='ok')ok++;else if(s==='wn')wn++;else if(s==='er')er++});
+  const box=document.getElementById('kpiBox');
+  if(list.length){box.style.display='flex';document.getElementById('kOk').textContent=ok;document.getElementById('kWn').textContent=wn;document.getElementById('kEr').textContent=er;document.getElementById('kTot').textContent=list.length}
+  else box.style.display='none';
+  document.getElementById('kpi').textContent=list.length?list.length+' turbines loaded':'';
+}
+
+// Build the table once; thereafter only patch changed rows (fast incremental).
+function buildTable(){
+  const tb=document.getElementById('tbl');tb.innerHTML='';
+  list.forEach(t=>{
+    const tr=document.createElement('tr');tr.id='r_'+t.id;
+    const orig=t.lat.toFixed(6)+', '+t.lon.toFixed(6);
+    const corr=t.clat!==undefined?t.clat.toFixed(6)+', '+t.clon.toFixed(6):' - ';
+    tr.innerHTML='<td style="font:10px SF Mono,monospace">'+t.id+'</td>'+
+      '<td style="font:10px SF Mono,monospace">'+orig+'</td>'+
+      '<td style="font:10px SF Mono,monospace">'+corr+'</td>'+
+      '<td><span class="bdg" id="d_'+t.id+'"> - </span></td>'+
+      '<td><button class="eb" id="eb_'+t.id+'" title="Edit">✏️</button>'+
+      '<button class="eb ok" id="ok_'+t.id+'" title="Mark OK (0m)">OK</button>'+
+      '<button class="eb rst" id="rst_'+t.id+'" title="Reset row">↺</button></td>';
+    tr.onclick=()=>locate(t.id);
+    tb.appendChild(tr);
+    document.getElementById('eb_'+t.id).onclick=(e)=>{e.stopPropagation();startEdit(t.id)};
+    document.getElementById('ok_'+t.id).onclick=(e)=>{e.stopPropagation();markOK(t.id)};
+    document.getElementById('rst_'+t.id).onclick=(e)=>{e.stopPropagation();resetRow(t.id)};
+  });
+  if(activeId) highlight(activeId);
+}
+function highlight(id){document.querySelectorAll('.side tr.active').forEach(r=>r.classList.remove('active'));const r=document.getElementById('r_'+id);if(r)r.classList.add('active')}
+
+function locate(id){const t=list.find(x=>x.id===id);if(!t)return;activeId=id;highlight(id);map.flyTo([t.clat!==undefined?t.clat:t.lat,t.clon!==undefined?t.clon:t.lon],18);document.getElementById('pin').textContent='Original: '+id}
+function startEdit(id){const t=list.find(x=>x.id===id);if(!t)return;editId=id;activeId=id;highlight(id);map.flyTo([t.lat,t.lon],18);document.getElementById('pin').textContent='Click map at actual turbine: '+id}
+function onMapClick(e){
+  if(!editId)return;
+  const t=list.find(x=>x.id===editId);if(!t)return;
+  pushHistory(t);
+  const lat=e.latlng.lat,lon=e.latlng.lng,d=dist(t.lat,t.lon,lat,lon);
+  t.clat=lat;t.clon=lon;t.dist=d;t.status=status(d);
+  save();render();patchRow(t);
+  document.getElementById('pin').textContent='Corrected '+t.id+' — '+Math.round(d)+' m';
+  log('Correct',t.id+' moved '+Math.round(d)+' m');
+  editId=null; nextAfter(activeId);
+}
+function markOK(id){const t=list.find(x=>x.id===id);if(!t)return;pushHistory(t);t.clat=t.lat;t.clon=t.lon;t.dist=0;t.status='ok';log('OK',id+' marked correct');save();render();patchRow(t);activeId=id;highlight(id);nextAfter(id)}
+function resetRow(id){const t=list.find(x=>x.id===id);if(!t)return;pushHistory(t);delete t.clat;delete t.clon;delete t.dist;delete t.status;log('Reset',id+' cleared');save();render();patchRow(t);activeId=id;highlight(id)}
+function pushHistory(t){redo.push({id:t.id,clat:t.clat,clon:t.clon,dist:t.dist,status:t.status})}
+function undo(){const h=redo.pop();if(!h)return;const t=list.find(x=>x.id===h.id);if(!t)return;if(h.clat===undefined){delete t.clat;delete t.clon;delete t.dist;delete t.status}else{t.clat=h.clat;t.clon=h.clon;t.dist=h.dist;t.status=h.status};save();render();patchRow(t);log('Undo',h.id)}
+
+// Incrementally patch a single row instead of rebuilding the whole table.
+function patchRow(t){
+  const corr=t.clat!==undefined?t.clat.toFixed(6)+', '+t.clon.toFixed(6):' - ';
+  const tr=document.getElementById('r_'+t.id);if(!tr)return;
+  tr.children[2].innerHTML='<span style="font:10px SF Mono,monospace">'+corr+'</span>';
+  const el=document.getElementById('d_'+t.id);if(el){const s=status(t.dist);el.className='bdg '+s;el.textContent=t.dist===undefined?' - ':Math.round(t.dist)+'m'}
+  updateKPI();
+}
+
+// After acting on a turbine, advance to the next one needing attention.
+function nextAfter(id){
+  const idx=list.findIndex(x=>x.id===id);
+  for(let k=1;k<=list.length;k++){const n=list[(idx+k)%list.length];if(n.clat===undefined){activeId=n.id;highlight(n.id);map.flyTo([n.lat,n.lon],18);document.getElementById('pin').textContent='Next: '+n.id;return}}
+  document.getElementById('pin').textContent='All turbines verified ✓';
+}
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify(list))}catch(e){}}
+function load(){try{const s=localStorage.getItem(KEY);if(s){list=JSON.parse(s);return true}}catch(e){}return false}
+
+function parseCSV(text){
+  const lines=text.replace(/﻿/g,'').split(/\r?\n/).filter(Boolean);
+  if(lines.length<2)return [];
+  const hdr=lines[0].split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+  const out=[];
+  for(let i=1;i<lines.length;i++){
+    const c=lines[i].split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+    const row={};hdr.forEach((h,j)=>row[h]=c[j]!==undefined?c[j]:'');
+    const id=(row.wtid||row.id||row.turbine_id||'').trim();if(!id)continue;
+    const lat=parseFloat(row.lat_corrected||row.corrected_lat||row.lat||row.latitude||row.Latitude);
+    const lon=parseFloat(row.lon_corrected||row.corrected_lon||row.lon||row.longitude||row.Longitude);
+    if(isNaN(lat)||isNaN(lon))continue;
+    const t={id,lat,lon};
+    // If the import already carries corrected coords, restore them.
+    const clat=parseFloat(row.lat_corrected||row.corrected_lat||''),clon=parseFloat(row.lon_corrected||row.corrected_lon||'');
+    if(!isNaN(clat)&&!isNaN(clon)){t.clat=clat;t.clon=clon;t.dist=dist(lat,lon,clat,clon);t.status=status(t.dist)}
+    out.push(t);
+  }
+  return out;
+}
+
+function importCSV(ev){const f=ev.target.files[0];if(!f)return;const seq=++importSeq;const r=new FileReader();r.onload=e=>{if(seq!==importSeq)return;list=parseCSV(e.target.result);afterLoad(f.name,list.length)};r.readAsText(f)}
+function afterLoad(name,n){buildTable();render();updateKPI();document.getElementById('tc').textContent=n;document.getElementById('pin').textContent='Loaded '+n+' turbines from '+name;log('Import',name+' — '+n+' turbines');if(list.length){activeId=list[0].id;highlight(activeId);map.flyTo([list[0].lat,list[0].lon],13)}}
+
+function importPDF(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const hint=document.getElementById('hint');hint.innerHTML='<span class="spin"></span> parsing PDF…';
+  const fd=new FormData();fd.append('file',f);
+  fetch('/api/import_pdf',{method:'POST',body:fd}).then(r=>r.json()).then(j=>{
+    hint.textContent='';
+    if(j.error){log('PDF',j.error);hint.textContent=j.error;return}
+    list=j.rows.map(r=>({id:String(r[0]),lat:r[1],lon:r[2]}));
+    afterLoad(f.name,list.length);
+  }).catch(err=>{hint.textContent='PDF import failed (run server.py)';log('PDF','fetch error '+err)});
+}
+
+function exportCSV(){
+  let csv='id,original_lat,original_lon,corrected_lat,corrected_lon,deviation_m,status\n';
+  list.forEach(t=>{
+    const lat=t.clat!==undefined?t.clat:t.lat, lon=t.clon!==undefined?t.clon:t.lon;
+    const d=t.dist!==undefined?Math.round(t.dist):0, s=t.status||status(d);
+    csv+=t.id+','+t.lat+','+t.lon+','+lat+','+lon+','+d+','+s+'\n';
+  });
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='GW640358-manual-'+Date.now()+'.csv';a.click();
+  log('Export','Downloaded corrected CSV ('+list.length+' rows)');
+}
+function resetAll(){if(!confirm('Clear all turbines and reset?'))return;list=[];redo.length=0;save();buildTable();render();document.getElementById('pin').textContent='Upload a CSV or PDF to begin';document.getElementById('tc').textContent='0';log('Reset','All cleared')}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  initMap();
+  if(load()&&list.length){buildTable();render();updateKPI();document.getElementById('tc').textContent=list.length;document.getElementById('pin').textContent='Restored '+list.length+' turbines';log('Restore','Loaded '+list.length+' from previous session')}
+});
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='z'){e.preventDefault();undo()}});
 </script>
 </body>
 </html>
