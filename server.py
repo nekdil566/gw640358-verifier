@@ -113,5 +113,11 @@ def health():
 
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+    # Accept the first purely-numeric CLI arg as the port; ignore anything else
+    # (e.g. a pasted shell comment) and fall back to 8000.
+    port = 8000
+    for arg in sys.argv[1:]:
+        if arg.isdigit():
+            port = int(arg)
+            break
     app.run(host="127.0.0.1", port=port, debug=False)
