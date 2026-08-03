@@ -1,0 +1,26 @@
+{
+  "name": "wind-turbine-verifier",
+  "version": "1.0.0",
+  "description": "A lightweight, local-first tool for **manually verifying and correcting wind-turbine coordinates** against high-resolution satellite imagery (ArcGIS World Imagery), built for Goldwind farm **640358** (55 turbines).",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nekdil566/gw640358-verifier.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nekdil566/gw640358-verifier/issues"
+  },
+  "homepage": "https://github.com/nekdil566/gw640358-verifier#readme",
+  "dependencies": {
+    "puppeteer-core": "^21.11.0"
+  }
+}

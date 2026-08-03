@@ -9,3 +9,6 @@ venv/
 
 # OS
 .DS_Store
+
+# Node deps (puppeteer test only)
+node_modules/

@@ -3,13 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Farm 640358 · Manual Verifier</title>
+<title>Wind Farm Coordinate Verifier</title>
 <style>
 :root{--bg:#0b0f13;--bg2:#11161d;--bg3:#161b22;--bdr:#21262d;--tx:#e6edf3;--tx2:#8b949e;--red:#f85149;--blu:#58a6ff;--grn:#3fb950;--amb:#d29922}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif}
 .wrap{height:100vh;display:flex;flex-direction:column;overflow:hidden}
-.top{height:40px;background:#0d5a22;display:flex;align-items:center;padding:0 12px;gap:10px;color:#fff;font-weight:700}
+.top{height:44px;background:#0d5a22;display:flex;align-items:center;padding:0 12px;gap:10px;color:#fff;font-weight:700}
+.top input{background:#0a3f18;color:#fff;border:1px solid #1c7a3a;border-radius:6px;padding:4px 8px;font-weight:700;font-size:13px;width:200px}
+.top .v{color:#cde8d7;font-weight:400;font-size:11px}
 .ctrls{padding:8px;background:var(--bg2);border-bottom:1px solid var(--bdr);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .btn{background:var(--bg3);color:var(--tx);border:1px solid var(--bdr);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px}
 .btn:hover{border-color:#484f58}
@@ -44,7 +46,11 @@ input[type=file]{display:none}
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><b>Farm 640358</b><span style="color:#cde8d7;font-weight:400;font-size:11px"> Manual verifier v1.0</span></div>
+  <div class="top">
+    <span>Farm</span>
+    <input id="farm" value="640358" title="Wind farm name / id (used for saving & export)">
+    <span class="v">Coordinate Verifier v2.0</span>
+  </div>
   <div class="ctrls">
     <button class="btn" onclick="document.getElementById('csv').click()">Upload CSV</button>
     <input type="file" id="csv" accept=".csv" onchange="importCSV(event)">
@@ -78,18 +84,25 @@ input[type=file]{display:none}
   </div>
 </div>
 <script src="lib/leaflet.js"></script>
+<script src="lib/pdfjs/pdf.min.js"></script>
 <script>
 let map,mLayer,dLayer;
 let list=[];
 let editId=null, activeId=null, importSeq=0;
-const KEY='gw640358_manual_v1';
+let farmName='640358';
+
+// --- per-farm persistence ------------------------------------------------
+// Storage is keyed by farm name so the tool is reusable for ANY wind farm,
+// not just 640358. Nothing is auto-restored on load (upload each session).
+function storageKey(){return 'gwv1::'+(farmName||'unnamed').replace(/[^a-z0-9_一-龥-]/gi,'_')}
+function setFarm(name){farmName=(name||'unnamed').trim()||'unnamed';document.getElementById('farm').value=farmName;document.title=farmName+' · Coordinate Verifier'}
 const redo=[];               // history of edits for Undo/Back
 
 function log(a,b){const d=new Date().toLocaleTimeString();const el=document.getElementById('log');const line=document.createElement('div');line.style.marginBottom='4px';line.innerHTML='<div style="color:var(--tx2)">'+d+'</div><div><b style="color:var(--blu)">'+a+'</b> '+b+'</div>';el.prepend(line);document.getElementById('lc').textContent=parseInt(document.getElementById('lc').textContent||0)+1}
 function dist(a,b,c,d){const R=6371000;const toR=x=>x*Math.PI/180;const dLat=toR(c-a);const dLon=toR(d-b);const x=Math.sin(dLat/2)**2+Math.cos(toR(a))*Math.cos(toR(c))*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
 function status(d){if(d===undefined||d===null)return'na';if(d<20)return'ok';if(d<100)return'wn';return'er'}
 
-function initMap(){if(map)return;map=L.map('map',{preferCanvas:true}).setView([37.39,106.38],12);L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}).addTo(map);map.on('click',onMapClick)}
+function initMap(){if(map)return;map=L.map('map',{preferCanvas:true}).setView([20,0],2);L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'}).addTo(map);map.on('click',onMapClick)}
 
 function render(){
   if(!mLayer||!dLayer){mLayer=L.layerGroup().addTo(map);dLayer=L.layerGroup().addTo(map)}
@@ -170,28 +183,29 @@ function patchRow(t){
 
 // After acting on a turbine, advance to the next one needing attention.
 function nextAfter(id){
+  if(!list.length)return;
   const idx=list.findIndex(x=>x.id===id);
   for(let k=1;k<=list.length;k++){const n=list[(idx+k)%list.length];if(n.clat===undefined){activeId=n.id;highlight(n.id);map.flyTo([n.lat,n.lon],18);document.getElementById('pin').textContent='Next: '+n.id;return}}
   document.getElementById('pin').textContent='All turbines verified ✓';
 }
 
-function save(){try{localStorage.setItem(KEY,JSON.stringify(list))}catch(e){}}
-function load(){try{const s=localStorage.getItem(KEY);if(s){list=JSON.parse(s);return true}}catch(e){}return false}
+function save(){try{localStorage.setItem(storageKey(),JSON.stringify({farm:farmName,list}))}catch(e){}}
+// NOTE: not auto-restored on load (user prefers empty start, upload each session).
 
+// ---- parsing -------------------------------------------------------------
 function parseCSV(text){
   const lines=text.replace(/﻿/g,'').split(/\r?\n/).filter(Boolean);
   if(lines.length<2)return [];
-  const hdr=lines[0].split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+  const hdr=lines[0].split(',').map(s=>s.trim().replace(/^\"|\"$/g,''));
   const out=[];
   for(let i=1;i<lines.length;i++){
-    const c=lines[i].split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+    const c=lines[i].split(',').map(s=>s.trim().replace(/^\"|\"$/g,''));
     const row={};hdr.forEach((h,j)=>row[h]=c[j]!==undefined?c[j]:'');
     const id=(row.wtid||row.id||row.turbine_id||'').trim();if(!id)continue;
     const lat=parseFloat(row.lat_corrected||row.corrected_lat||row.lat||row.latitude||row.Latitude);
     const lon=parseFloat(row.lon_corrected||row.corrected_lon||row.lon||row.longitude||row.Longitude);
     if(isNaN(lat)||isNaN(lon))continue;
     const t={id,lat,lon};
-    // If the import already carries corrected coords, restore them.
     const clat=parseFloat(row.lat_corrected||row.corrected_lat||''),clon=parseFloat(row.lon_corrected||row.corrected_lon||'');
     if(!isNaN(clat)&&!isNaN(clon)){t.clat=clat;t.clon=clon;t.dist=dist(lat,lon,clat,clon);t.status=status(t.dist)}
     out.push(t);
@@ -199,38 +213,88 @@ function parseCSV(text){
   return out;
 }
 
-function importCSV(ev){const f=ev.target.files[0];if(!f)return;const seq=++importSeq;const r=new FileReader();r.onload=e=>{if(seq!==importSeq)return;list=parseCSV(e.target.result);afterLoad(f.name,list.length)};r.readAsText(f)}
-function afterLoad(name,n){buildTable();render();updateKPI();document.getElementById('tc').textContent=n;document.getElementById('pin').textContent='Loaded '+n+' turbines from '+name;log('Import',name+' — '+n+' turbines');if(list.length){activeId=list[0].id;highlight(activeId);map.flyTo([list[0].lat,list[0].lon],13)}}
+// Same coordinate regex used by the old Flask backend, now run in-browser.
+function parsePDFText(text){
+  const LINE_RE=/(?<id>\d{4,})\D{0,12}(?<a>[+-]?\d{1,3}\.\d{3,8})\D{0,6}(?<b>[+-]?\d{1,3}\.\d{3,8})/;
+  const rows=[];const seen=new Set();
+  text.split(/\r?\n/).forEach(line=>{
+    const m=LINE_RE.exec(line);if(!m)return;
+    const tid=m.groups.id,a=parseFloat(m.groups.a),b=parseFloat(m.groups.b);
+    let lat,lon;
+    if(-90<=a&&a<=90&&-180<=b&&b<=180){lat=a;lon=b}
+    else if(-90<=b&&b<=90&&-180<=a&&a<=180){lat=b;lon=a}
+    else return;
+    if(seen.has(tid))return;seen.add(tid);
+    rows.push({id:tid,lat,lon});
+  });
+  return rows;
+}
 
-function importPDF(ev){
+function setupPdfWorker(){
+  // In the single-file build, __PDF_WORKER_SRC__ is replaced with the worker
+  // source string (turned into a blob URL so it works from file://). In the
+  // dev build it stays as the literal token, so we fall back to the lib path.
+  const inlined="__PDF_WORKER_SRC__";
+  if(inlined&&inlined.length>100){
+    try{pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([inlined],{type:'text/javascript'}));return}catch(e){}
+  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdfjs/pdf.worker.min.js';
+}
+
+async function importPDF(ev){
   const f=ev.target.files[0];if(!f)return;
   const hint=document.getElementById('hint');hint.innerHTML='<span class="spin"></span> parsing PDF…';
-  const fd=new FormData();fd.append('file',f);
-  fetch('/api/import_pdf',{method:'POST',body:fd}).then(r=>r.json()).then(j=>{
+  try{
+    setupPdfWorker();
+    const buf=await f.arrayBuffer();
+    const doc=await pdfjsLib.getDocument({data:buf}).promise;
+    let text='';
+    for(let p=1;p<=doc.numPages;p++){const pg=await doc.getPage(p);const c=await pg.getTextContent();text+='\n'+c.items.map(i=>i.str).join(' ');}
+    const rows=parsePDFText(text);
     hint.textContent='';
-    if(j.error){log('PDF',j.error);hint.textContent=j.error;return}
-    list=j.rows.map(r=>({id:String(r[0]),lat:r[1],lon:r[2]}));
+    if(!rows.length){log('PDF','no turbine coordinates found');hint.textContent='No coordinates found in PDF';return}
+    list=rows.map(r=>({id:String(r.id),lat:r.lat,lon:r.lon}));
     afterLoad(f.name,list.length);
-  }).catch(err=>{hint.textContent='PDF import failed (run server.py)';log('PDF','fetch error '+err)});
+  }catch(err){hint.textContent='PDF parse failed';log('PDF','error '+err)}
+}
+
+function importCSV(ev){const f=ev.target.files[0];if(!f)return;const seq=++importSeq;const r=new FileReader();r.onload=e=>{if(seq!==importSeq)return;list=parseCSV(e.target.result);afterLoad(f.name,list.length)};r.readAsText(f)}
+
+function afterLoad(name,n){
+  // Derive farm name from the uploaded file (strip extension) unless user typed one.
+  const base=name.replace(/\.[^.]+$/,'');
+  if(farmName==='640358'||!farmName){setFarm(base)}
+  else setFarm(farmName);
+  buildTable();render();updateKPI();
+  document.getElementById('tc').textContent=n;
+  document.getElementById('pin').textContent='Loaded '+n+' turbines from '+name;
+  log('Import',name+' — '+n+' turbines ('+farmName+')');
+  if(list.length){
+    activeId=list[0].id;highlight(activeId);
+    const b=L.latLngBounds(list.map(t=>[t.lat,t.lon]));
+    map.fitBounds(b,{padding:[40,40],maxZoom:16});
+  }
 }
 
 function exportCSV(){
+  if(!list.length){log('Export','nothing to export');return}
   let csv='id,original_lat,original_lon,corrected_lat,corrected_lon,deviation_m,status\n';
   list.forEach(t=>{
     const lat=t.clat!==undefined?t.clat:t.lat, lon=t.clon!==undefined?t.clon:t.lon;
     const d=t.dist!==undefined?Math.round(t.dist):0, s=t.status||status(d);
     csv+=t.id+','+t.lat+','+t.lon+','+lat+','+lon+','+d+','+s+'\n';
   });
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='GW640358-manual-'+Date.now()+'.csv';a.click();
-  log('Export','Downloaded corrected CSV ('+list.length+' rows)');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=(farmName||'windfarm')+'-verified-'+Date.now()+'.csv';a.click();
+  log('Export','Downloaded corrected CSV ('+list.length+' rows) for farm '+farmName);
 }
 function resetAll(){if(!confirm('Clear all turbines and reset?'))return;list=[];redo.length=0;save();buildTable();render();document.getElementById('pin').textContent='Upload a CSV or PDF to begin';document.getElementById('tc').textContent='0';log('Reset','All cleared')}
 
-document.addEventListener('DOMContentLoaded',()=>{
-  initMap();
-  if(load()&&list.length){buildTable();render();updateKPI();document.getElementById('tc').textContent=list.length;document.getElementById('pin').textContent='Restored '+list.length+' turbines';log('Restore','Loaded '+list.length+' from previous session')}
-});
+document.getElementById('farm').addEventListener('change',e=>setFarm(e.target.value));
+document.addEventListener('DOMContentLoaded',()=>{initMap()});
 document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='z'){e.preventDefault();undo()}});
+
+// Test hook (harmless in normal use): lets automated tests drive the tool.
+window.__v={get list(){return list},setFarm,importCSV,importPDF,exportCSV,markOK,startEdit,onMapClick,parseCSV,parsePDFText,get farmName(){return farmName}};
 </script>
 </body>
 </html>
